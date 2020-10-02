@@ -10,7 +10,7 @@ clients_lock = threading.Lock()
 connected = 0
 
 clients = {}
-
+newPlayer = {}
 def connectionLoop(sock):
    while True:
       data, addr = sock.recvfrom(1024)
@@ -20,20 +20,18 @@ def connectionLoop(sock):
             clients[addr]['lastBeat'] = datetime.now()
       else:
          if 'connect' in data:
+            
+            newPlayer['id'] = str(addr)
+            newPlayer['init'] = True
+            NewPlayer = {"cmd": 0, "newPlayer" : newPlayer}
+            m = json.dumps(NewPlayer)
 
-            message2 = {"cmd": 0,"Connected Players: ": {"":str(clients.keys())}}
-            m2 = json.dumps(message2)
-             
             clients[addr] = {}
             clients[addr]['lastBeat'] = datetime.now()
             clients[addr]['color'] = 0
-            
-            message = {"cmd": 0,"New Player!":{"id":str(addr)}}
-            m = json.dumps(message)
 
             for c in clients:
                sock.sendto(bytes(m,'utf8'), c)
-               sock.sendto(bytes(m2,'utf8'), c)
 
 def cleanClients(sock):
    while True:
@@ -41,8 +39,8 @@ def cleanClients(sock):
          if (datetime.now() - clients[c]['lastBeat']).total_seconds() > 5:
             print('Dropped Client: ', c)
 
-            message = {"cmd": 0,"Player Has Left :( ":{"id":str(c)}}
-            m = json.dumps(message)
+            DiePlayer = {"cmd": 2,"lostPlayer":{"id":str(c)}}
+            m = json.dumps(DiePlayer)
 
             clients_lock.acquire()
             del clients[c]
@@ -63,6 +61,10 @@ def gameLoop(sock):
          clients[c]['color'] = {"R": random.random(), "G": random.random(), "B": random.random()}
          player['id'] = str(c)
          player['color'] = clients[c]['color']
+         if(newPlayer['init'] == True):
+            player['init'] = True
+         else:
+            player['init'] = False
          GameState['players'].append(player)
       s=json.dumps(GameState)
       print(s)
