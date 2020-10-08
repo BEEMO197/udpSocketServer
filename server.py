@@ -14,13 +14,27 @@ newPlayer = {}
 def connectionLoop(sock):
    while True:
       data, addr = sock.recvfrom(1024)
-      data = str(data)
+      
       if addr in clients:
-         if 'heartbeat' in data:
+         data = json.loads(data)
+         if data['heartbeat'] == "heartbeat":
             clients[addr]['lastBeat'] = datetime.now()
+            clients[addr]['position'] = data['playerLocation']
+
       else:
+         data = str(data)
          if 'connect' in data:
-            
+
+            ConnectedPlayers = {"cmd": 0, "Connected Players" : []}
+            for c in clients:
+               player = {}
+               player['id'] = str(c)
+               player['color'] = clients[c]['color']
+               player['position'] = clients[c]['position']
+               ConnectedPlayers['Connected Players'].append(player)
+
+            m2 = json.dumps(ConnectedPlayers)
+
             newPlayer['id'] = str(addr)
             newPlayer['init'] = True
             NewPlayer = {"cmd": 0, "newPlayer" : newPlayer}
@@ -29,6 +43,13 @@ def connectionLoop(sock):
             clients[addr] = {}
             clients[addr]['lastBeat'] = datetime.now()
             clients[addr]['color'] = 0
+            clients[addr]['position'] = 0
+
+            uniqueID = {"cmd": 3, "uniqueID" : str(addr)}
+            uniqueIDm = json.dumps(uniqueID)
+
+            sock.sendto(bytes(uniqueIDm, 'utf8'), addr)
+            sock.sendto(bytes(m2, 'utf8'), addr)
 
             for c in clients:
                sock.sendto(bytes(m,'utf8'), c)
@@ -61,17 +82,20 @@ def gameLoop(sock):
          clients[c]['color'] = {"R": random.random(), "G": random.random(), "B": random.random()}
          player['id'] = str(c)
          player['color'] = clients[c]['color']
+         player['position'] = clients[c]['position']
+
          if(newPlayer['init'] == True):
             player['init'] = True
          else:
             player['init'] = False
+
          GameState['players'].append(player)
       s=json.dumps(GameState)
       print(s)
       for c in clients:
          sock.sendto(bytes(s,'utf8'), c)
       clients_lock.release()
-      time.sleep(1)
+      time.sleep(1 / 30)
 
 def main():
    port = 12345
