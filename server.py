@@ -25,34 +25,35 @@ def connectionLoop(sock):
          data = str(data)
          if 'connect' in data:
 
-            ConnectedPlayers = {"cmd": 0, "Connected Players" : []}
+            newPlayer['id'] = str(addr)
+            newPlayer['color'] = {"R": random.random(), "G": random.random(), "B": random.random()}
+
+            NewPlayer = {"cmd": 0, "newPlayer" : newPlayer, "players": []}
             for c in clients:
                player = {}
                player['id'] = str(c)
                player['color'] = clients[c]['color']
                player['position'] = clients[c]['position']
-               ConnectedPlayers['Connected Players'].append(player)
+               NewPlayer['players'].append(player)
+               
+            m2 = json.dumps(NewPlayer)
+            sock.sendto(bytes(m2, 'utf8'), addr)
 
-            m2 = json.dumps(ConnectedPlayers)
+            newPlayerMes = {"cmd": 0, "newPlayer" : newPlayer}
+            m = json.dumps(newPlayerMes)
 
-            newPlayer['id'] = str(addr)
-            newPlayer['init'] = True
-            NewPlayer = {"cmd": 0, "newPlayer" : newPlayer}
-            m = json.dumps(NewPlayer)
+            for c in clients:
+               sock.sendto(bytes(m,'utf8'), c)
 
             clients[addr] = {}
             clients[addr]['lastBeat'] = datetime.now()
-            clients[addr]['color'] = 0
+            clients[addr]['color'] = {"R": random.random(), "G": random.random(), "B": random.random()}
             clients[addr]['position'] = 0
 
             uniqueID = {"cmd": 3, "uniqueID" : str(addr)}
             uniqueIDm = json.dumps(uniqueID)
 
             sock.sendto(bytes(uniqueIDm, 'utf8'), addr)
-            sock.sendto(bytes(m2, 'utf8'), addr)
-
-            for c in clients:
-               sock.sendto(bytes(m,'utf8'), c)
 
 def cleanClients(sock):
    while True:
@@ -79,23 +80,18 @@ def gameLoop(sock):
       print (clients)
       for c in clients:
          player = {}
-         clients[c]['color'] = {"R": random.random(), "G": random.random(), "B": random.random()}
          player['id'] = str(c)
          player['color'] = clients[c]['color']
          player['position'] = clients[c]['position']
 
-         if(newPlayer['init'] == True):
-            player['init'] = True
-         else:
-            player['init'] = False
-
          GameState['players'].append(player)
       s=json.dumps(GameState)
       print(s)
+
       for c in clients:
          sock.sendto(bytes(s,'utf8'), c)
       clients_lock.release()
-      time.sleep(1 / 30)
+      time.sleep(1 / 144)
 
 def main():
    port = 12345
